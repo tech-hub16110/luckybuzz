@@ -1,0 +1,14 @@
+# Second layer. This folder now sits INSIDE the web root, so the parent
+# .htaccess rewrite is what normally keeps it private. If that rewrite is ever
+# dropped — a bad merge, a host that resets config, an accidental re-upload of
+# the wrong folder — this file denies the directory on its own authority.
+#
+# It is wrapped in IfModule so a host without mod_authz_core cannot 500 on it.
+
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
