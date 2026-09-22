@@ -1,0 +1,46 @@
+# Everything the app needs is inside this folder, so these rules are the actual
+# security boundary, not a nicety. app/ holds the code and the database
+# credentials; if they were fetchable over HTTP the site is compromised.
+#
+# Two independent layers are used because each fails differently:
+#   1. this file rewrites away /app and /data
+#   2. app/.htaccess denies that directory on its own, and every credentials
+#      file refuses to run unless the app included it
+# Losing both at once requires the host to ignore .htaccess entirely.
+
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # The application itself is never a URL. Blocked before anything else runs.
+    RewriteRule ^(app|data|logs|tests|bin)(/|$) - [F,L]
+
+    # Anything that is a real file under assets/ is served directly...
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # ...and every other path is a route handled by the front controller.
+    RewriteRule ^ index.php [L,QSA]
+</IfModule>
+
+# Belt and braces for the rewrite above: refuse these extensions by name, even
+# if a request somehow reaches them as a real file.
+<FilesMatch "(^\.|~$|\.(ini|log|sql|sqlite|sqlite3|db|bak|old|orig|save|edit|swp|env|md|json|lock|sh)$)">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Turn this on once the free SSL certificate is issued (or use the control
+# panel's "Force HTTPS" toggle, which does the same thing higher up).
+#<IfModule mod_rewrite.c>
+#    RewriteCond %{HTTPS} !=on
+#    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+#</IfModule>
